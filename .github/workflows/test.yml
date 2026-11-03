@@ -1,0 +1,38 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+        version: [latest, 0.1.0]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - id: setup
+        uses: ./
+        with:
+          version: ${{ matrix.version }}
+      - shell: bash
+        env:
+          INSTALLED: ${{ steps.setup.outputs.version }}
+          WANTED: ${{ matrix.version }}
+        run: |
+          stormbreaker version
+          [ -n "$INSTALLED" ]
+          case "$WANTED" in
+            latest) ;;
+            *) [ "$INSTALLED" = "$WANTED" ] ;;
+          esac

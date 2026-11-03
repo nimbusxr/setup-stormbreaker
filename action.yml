@@ -1,0 +1,48 @@
+name: Setup stormbreaker
+description: Install stormbreaker, operational acceptance testing in shared environments (github.com/nimbusxr/stormbreaker), and add it to PATH.
+author: NimbusXR
+branding:
+  icon: zap
+  color: blue
+
+inputs:
+  version:
+    description: "Version to install: a version like 0.1.0, 'latest' (newest release, pre-releases included), or 'nightly'."
+    default: latest
+  token:
+    description: GitHub token used to query releases (avoids API rate limits).
+    default: ${{ github.token }}
+
+outputs:
+  version:
+    description: The installed version.
+    value: ${{ steps.version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install stormbreaker (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        STORMBREAKER_VERSION: ${{ inputs.version != 'latest' && inputs.version || '' }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        STORMBREAKER_INSTALL_DIR: ${{ runner.tool_cache }}/stormbreaker/bin
+      run: |
+        sh "$GITHUB_ACTION_PATH/install.sh"
+        echo "$STORMBREAKER_INSTALL_DIR" >> "$GITHUB_PATH"
+    - name: Install stormbreaker (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        STORMBREAKER_VERSION: ${{ inputs.version != 'latest' && inputs.version || '' }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        STORMBREAKER_INSTALL_DIR: ${{ runner.tool_cache }}\stormbreaker\bin
+      run: |
+        & "$env:GITHUB_ACTION_PATH/install.ps1"
+        Add-Content -Path $env:GITHUB_PATH -Value $env:STORMBREAKER_INSTALL_DIR
+    - id: version
+      shell: bash
+      run: |
+        v=$(stormbreaker version --json | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -n 1)
+        echo "version=$v" >> "$GITHUB_OUTPUT"
